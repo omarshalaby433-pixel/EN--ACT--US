@@ -329,10 +329,12 @@
          ================================================================= -->
     <section id="scene-submit" class="space-y-5">
 
-      <!-- All tasks at a glance: open / closed (click to switch) -->
+      <!-- Task picker (always visible, even when the selected task is closed) -->
       <div class="bg-canvas-panel border border-canvas-border rounded-2xl p-3 sm:p-4">
-        <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">All tasks — tap a task to see its deadline &amp; whether it is still open</div>
-        <div id="taskStatusStrip" class="flex flex-wrap gap-2"></div>
+        <label for="submitTaskSelect" class="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+          Select Task <span class="text-canvas-gold">*</span> <span class="text-slate-500 normal-case">— 🔒 closed / 🟢 open</span>
+        </label>
+        <select id="submitTaskSelect" onchange="handleTaskSelectChange(this.value)" class="w-full bg-canvas-bg border border-canvas-border focus:border-canvas-gold rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none"></select>
       </div>
 
       <!-- Top Monitor Frame Header -->
@@ -351,7 +353,7 @@
               <span id="submitStatusPill" class="inline-flex items-center gap-1.5 font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                 ● SUBMISSIONS OPEN
               </span>
-              <span id="submitTaskPointsBadge" class="font-mono text-xs text-canvas-blue bg-canvas-bg px-2.5 py-0.5 rounded border border-canvas-border">
+              <span id="submitTaskPointsBadge" class="hidden font-mono text-xs text-canvas-blue bg-canvas-bg px-2.5 py-0.5 rounded border border-canvas-border">
                 Max Score: 100 PTS
               </span>
             </div>
@@ -409,21 +411,11 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- 1. Select Task (Unlimited Tasks) -->
-          <div>
-            <label class="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
-              1. Select Task <span class="text-canvas-gold">*</span>
-            </label>
-            <select id="submitTaskSelect" onchange="handleTaskSelectChange(this.value)" class="w-full bg-canvas-bg border border-canvas-border focus:border-canvas-gold rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none">
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
+        <div class="grid grid-cols-1 gap-4">
           <!-- 2. Select Member Name ONLY (Secret Code is completely hidden) -->
           <div>
             <label class="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
-              2. Select Your Name <span class="text-canvas-gold">*</span>
+              1. Select Your Name <span class="text-canvas-gold">*</span>
             </label>
             <select id="submitMemberDropdown" onchange="handleSubmitMemberDropdown(this.value)" class="w-full bg-canvas-bg border border-canvas-border focus:border-canvas-gold rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none">
               <option value="">Choose your name...</option>
@@ -454,7 +446,7 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-mono uppercase tracking-wider text-slate-300">
-              3. Google Drive Link (Video / Folder) <span class="text-red-400">*</span>
+              2. Google Drive Link (Video / Folder) <span class="text-red-400">*</span>
             </label>
             <span id="driveUrlStatusText" class="text-[11px] font-mono text-slate-400">Paste drive.google.com link</span>
           </div>
@@ -471,7 +463,7 @@
         <!-- 4. Optional Notes -->
         <div>
           <label class="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
-            4. Delivery Note (Optional)
+            3. Delivery Note (Optional)
           </label>
           <input id="submitNoteInput" type="text" placeholder="Any short note for the Board about your edit or footage..." class="w-full bg-canvas-bg border border-canvas-border focus:border-canvas-gold rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none" />
         </div>
@@ -2090,14 +2082,15 @@
       const taskOptionsHtml = tasks
         .map((t) => `<option value="${t.id}">${t.title} (Max: ${t.maxScore} PTS)</option>`)
         .join("");
+      const memberTaskOptionsHtml = tasks.map((t) => `<option value="${t.id}">${t.title}</option>`).join("");
 
       if (submitTaskSel) {
-        submitTaskSel.innerHTML = taskOptionsHtml;
-        submitTaskSel.value = activeSubmitTaskId;
+        _stripSig = "";
+        renderTaskStatusStrip();
       }
       if (lookupTaskSel) {
         const prevLookup = lookupTaskSel.value;
-        lookupTaskSel.innerHTML = taskOptionsHtml;
+        lookupTaskSel.innerHTML = memberTaskOptionsHtml;
         if (prevLookup && tasks.some((t) => t.id === prevLookup)) {
           lookupTaskSel.value = prevLookup;
         }
@@ -2136,7 +2129,7 @@
 
       if (titleEl) titleEl.textContent = task.title;
       if (briefEl) briefEl.textContent = task.brief;
-      if (ptsEl) ptsEl.textContent = `Max Score: ${task.maxScore} PTS`;
+      if (ptsEl) ptsEl.classList.add("hidden"); // members do not see the score scale
 
       tickDeadlineClock();
       const currentMemberId = document.getElementById("submitMemberDropdown")?.value || "";
@@ -2152,28 +2145,19 @@
       updateSubmitSceneUI();
     }
 
-    // Chips for every task: red = closed, green = open. Works even when the active task is closed.
+    // Task dropdown labels: 🔒 closed / 🟢 open (refreshes itself when a deadline passes)
     let _stripSig = "";
     function renderTaskStatusStrip() {
-      const box = document.getElementById("taskStatusStrip");
-      if (!box) return;
+      const sel = document.getElementById("submitTaskSelect");
+      if (!sel) return;
       const sig = activeSubmitTaskId + "|" + tasks.map((t) => t.id + ":" + t.title + ":" + (isTaskLocked(t) ? 1 : 0)).join(",");
       if (sig === _stripSig) return;
       _stripSig = sig;
       const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-      box.innerHTML = tasks.map((t) => {
-        const closed = isTaskLocked(t);
-        const active = t.id === activeSubmitTaskId;
-        const tone = closed ? "border-red-500/40 text-red-300" : "border-emerald-500/40 text-emerald-300";
-        const ring = active ? "bg-canvas-card ring-2 ring-canvas-gold" : "bg-canvas-bg hover:bg-canvas-card";
-        return `<button type="button" data-task="${esc(t.id)}" onclick="handleTaskSelectChange(this.dataset.task)" class="flex items-center gap-2 border ${tone} ${ring} rounded-xl px-3 py-2 text-left transition max-w-full">
-          <span class="text-sm">${closed ? "🔒" : "🟢"}</span>
-          <span class="min-w-0">
-            <span class="block text-xs font-bold text-white truncate max-w-[14rem]">${esc(t.title)}</span>
-            <span class="block text-[10px] font-mono">${closed ? "CLOSED" : "OPEN"}</span>
-          </span>
-        </button>`;
-      }).join("");
+      sel.innerHTML = tasks.map((t) =>
+        `<option value="${esc(t.id)}">${isTaskLocked(t) ? "🔒 CLOSED" : "🟢 OPEN"} — ${esc(t.title)}</option>`
+      ).join("");
+      sel.value = activeSubmitTaskId;
     }
 
     function handleSubmitMemberDropdown(memberId) {
