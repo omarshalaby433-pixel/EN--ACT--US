@@ -534,7 +534,7 @@
             Check Your Task Evaluation
           </h1>
           <p class="text-xs sm:text-sm text-slate-400">
-            Select the task and enter the private <strong class="text-slate-200">Secret Code</strong> sent to you by the Board to view your personal score and feedback.
+            Select the task and enter the private <strong class="text-slate-200">Secret Code</strong> sent to you by the Board to view the Board feedback on your work.
           </p>
         </div>
 
@@ -567,7 +567,7 @@
         <!-- Result Display Area (Shows ONLY the selected task's grade & feedback) -->
         <div id="lookupSingleTaskResult" class="pt-1">
           <div class="bg-canvas-bg/70 border border-dashed border-canvas-border rounded-xl p-6 text-center text-xs text-slate-500 font-mono">
-            Select a task above and enter your private Secret Code to view your personal task score and Board feedback.
+            Select a task above and enter your private Secret Code to view the Board feedback on your task.
           </div>
         </div>
 
@@ -2314,7 +2314,8 @@
         return;
       }
 
-      if (!sub || (!sub.driveLink && sub.score === null)) {
+      const hasGraded = !!sub && (sub.graded === true || (sub.score !== null && sub.score !== undefined && sub.score !== ""));
+      if (!sub || (!sub.driveLink && !hasGraded)) {
         resBox.innerHTML = `
           <div class="bg-canvas-bg border border-amber-500/40 rounded-2xl p-5 space-y-2">
             <div class="flex items-center justify-between">
@@ -2328,16 +2329,8 @@
         return;
       }
 
-      const isGraded = sub.score !== null && sub.score !== "";
-      const critHtml = sub.criteria
-        ? `<div class="grid grid-cols-3 gap-3 text-xs">${TASK_CRITERIA.map((c) => {
-            const v = sub.criteria[c.id];
-            return `<div class="bg-canvas-panel border border-canvas-border rounded-xl p-3 text-center">
-              <div class="text-[10px] font-mono text-slate-400 uppercase">${c.title}</div>
-              <div class="font-mono font-black text-canvas-gold mt-0.5">${v === null || v === undefined ? "—" : v} <span class="text-slate-500 font-normal">/ ${c.max}</span></div>
-            </div>`;
-          }).join("")}</div>`
-        : "";
+      const isGraded = hasGraded;
+      const critHtml = "";
       resBox.innerHTML = `
         <div class="bg-canvas-bg border-2 ${isGraded ? "border-canvas-gold" : "border-canvas-blue/50"} rounded-2xl p-5 space-y-4 shadow-xl">
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-canvas-border pb-3">
@@ -2346,9 +2339,9 @@
               <div class="text-lg font-extrabold text-white">${member.name}</div>
             </div>
             <div class="text-right">
-              <div class="text-[11px] font-mono text-slate-400">TASK SCORE</div>
-              <div class="font-mono text-2xl font-black ${isGraded ? "text-canvas-gold" : "text-canvas-blue"}">
-                ${isGraded ? `${sub.score} / ${task.maxScore}` : "PENDING REVIEW ⏳"}
+              <div class="text-[11px] font-mono text-slate-400">STATUS</div>
+              <div class="font-mono text-lg font-black ${isGraded ? "text-emerald-400" : "text-canvas-blue"}">
+                ${isGraded ? "REVIEWED ✓" : "PENDING REVIEW ⏳"}
               </div>
             </div>
           </div>
