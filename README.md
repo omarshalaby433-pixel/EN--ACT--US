@@ -328,7 +328,13 @@
          SCENE 01: 01_SUBMIT_TASK.mp4 (Member Task Submission Bay)
          ================================================================= -->
     <section id="scene-submit" class="space-y-5">
-      
+
+      <!-- All tasks at a glance: open / closed (click to switch) -->
+      <div class="bg-canvas-panel border border-canvas-border rounded-2xl p-3 sm:p-4">
+        <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">All tasks — tap a task to see its deadline &amp; whether it is still open</div>
+        <div id="taskStatusStrip" class="flex flex-wrap gap-2"></div>
+      </div>
+
       <!-- Top Monitor Frame Header -->
       <div class="vf-frame bg-canvas-panel border border-canvas-border rounded-2xl p-5 sm:p-6 shadow-xl">
         <div class="vf-corner vf-tl"></div>
@@ -2002,6 +2008,7 @@
     function tickDeadlineClock() {
       const task = getActiveSubmitTask();
       if (!task) return;
+      renderTaskStatusStrip();
 
       const hudCd = document.getElementById("hudCountdown");
       const hudBadge = document.getElementById("hudStatusBadge");
@@ -2140,7 +2147,33 @@
 
     function handleTaskSelectChange(taskId) {
       activeSubmitTaskId = taskId;
+      const sel = document.getElementById("submitTaskSelect");
+      if (sel && sel.value !== taskId) sel.value = taskId;
       updateSubmitSceneUI();
+    }
+
+    // Chips for every task: red = closed, green = open. Works even when the active task is closed.
+    let _stripSig = "";
+    function renderTaskStatusStrip() {
+      const box = document.getElementById("taskStatusStrip");
+      if (!box) return;
+      const sig = activeSubmitTaskId + "|" + tasks.map((t) => t.id + ":" + t.title + ":" + (isTaskLocked(t) ? 1 : 0)).join(",");
+      if (sig === _stripSig) return;
+      _stripSig = sig;
+      const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      box.innerHTML = tasks.map((t) => {
+        const closed = isTaskLocked(t);
+        const active = t.id === activeSubmitTaskId;
+        const tone = closed ? "border-red-500/40 text-red-300" : "border-emerald-500/40 text-emerald-300";
+        const ring = active ? "bg-canvas-card ring-2 ring-canvas-gold" : "bg-canvas-bg hover:bg-canvas-card";
+        return `<button type="button" data-task="${esc(t.id)}" onclick="handleTaskSelectChange(this.dataset.task)" class="flex items-center gap-2 border ${tone} ${ring} rounded-xl px-3 py-2 text-left transition max-w-full">
+          <span class="text-sm">${closed ? "🔒" : "🟢"}</span>
+          <span class="min-w-0">
+            <span class="block text-xs font-bold text-white truncate max-w-[14rem]">${esc(t.title)}</span>
+            <span class="block text-[10px] font-mono">${closed ? "CLOSED" : "OPEN"}</span>
+          </span>
+        </button>`;
+      }).join("");
     }
 
     function handleSubmitMemberDropdown(memberId) {
