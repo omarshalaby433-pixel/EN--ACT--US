@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en" dir="ltr" class="dark">
 <head>
   <meta charset="UTF-8" />
@@ -328,6 +329,10 @@
          SCENE 01: 01_SUBMIT_TASK.mp4 (Member Task Submission Bay)
          ================================================================= -->
     <section id="scene-submit" class="space-y-5">
+
+      <div id="noTasksNotice" class="hidden bg-canvas-panel border border-canvas-border rounded-2xl p-5 text-center text-sm text-slate-300">
+        🎬 No tasks are open right now. A new evaluation cycle has started — the Board will publish the new tasks soon.
+      </div>
 
       <!-- Task picker (always visible, even when the selected task is closed) -->
       <div class="bg-canvas-panel border border-canvas-border rounded-2xl p-3 sm:p-4">
@@ -749,6 +754,9 @@
             <button id="btab-security" onclick="switchBoardTab('security')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition">
               🔐 6. Security &amp; Sheet
             </button>
+            <button id="btab-cycles" onclick="switchBoardTab('cycles')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition">
+              📚 7. Cycles &amp; Archive
+            </button>
             <button onclick="exportEverythingMasterExcel()" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-500/20 hover:bg-emerald-500 hover:text-canvas-bg text-emerald-400 border border-emerald-500/40 transition flex items-center gap-1" title="Export All Data (Tasks, Drive Links, Evaluations & Rankings) to Excel">
               <span>⬇ Export All (Excel)</span>
             </button>
@@ -1032,6 +1040,49 @@
         <!-- =============================================================
              BOARD SUB-TAB 6: SECURITY (PASSWORD CHANGE) & GOOGLE SHEETS SYNC
              ============================================================= -->
+        <div id="bpanel-cycles" class="hidden space-y-5">
+          <div class="bg-canvas-bg border border-canvas-border rounded-2xl p-5 space-y-3">
+            <div class="text-xs font-mono font-bold uppercase text-canvas-gold">📆 Current evaluation cycle</div>
+            <div id="cycleSummary" class="text-xs text-slate-300"></div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+              <div class="md:col-span-6"><label class="block text-[10px] font-mono text-slate-400 mb-1">Cycle name</label>
+                <input id="cycNameInput" type="text" placeholder="e.g. December 2026" class="w-full bg-canvas-panel border border-canvas-border focus:border-canvas-gold rounded-xl px-3 py-2 text-xs text-white focus:outline-none" /></div>
+              <div class="md:col-span-4"><label class="block text-[10px] font-mono text-slate-400 mb-1">Started on</label>
+                <input id="cycStartInput" type="date" class="w-full bg-canvas-panel border border-canvas-border focus:border-canvas-gold rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none" /></div>
+              <div class="md:col-span-2"><button onclick="saveCycleInfo()" class="w-full bg-canvas-gold hover:bg-amber-400 text-canvas-bg font-extrabold text-xs px-3 py-2.5 rounded-xl transition">Save</button></div>
+            </div>
+          </div>
+
+          <div class="bg-canvas-bg border border-red-500/40 rounded-2xl p-5 space-y-3">
+            <div class="text-xs font-mono font-bold uppercase text-red-400">🔒 Close this cycle &amp; start a new one</div>
+            <p class="text-xs text-slate-300 leading-relaxed">The whole cycle (tasks, submissions, scores, feedback, ranking) is saved to the archive first, then the tasks, submissions and scores are cleared. Members, sessions and memories stay.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><label class="block text-[10px] font-mono text-slate-400 mb-1">This cycle ended on</label>
+                <input id="cycEndInput" type="date" class="w-full bg-canvas-panel border border-canvas-border focus:border-red-400 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none" /></div>
+              <div><label class="block text-[10px] font-mono text-slate-400 mb-1">Next cycle name</label>
+                <input id="cycNextNameInput" type="text" placeholder="e.g. January 2027" class="w-full bg-canvas-panel border border-canvas-border focus:border-red-400 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" /></div>
+              <div><label class="block text-[10px] font-mono text-slate-400 mb-1">Next cycle starts on</label>
+                <input id="cycNextStartInput" type="date" class="w-full bg-canvas-panel border border-canvas-border focus:border-red-400 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none" /></div>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none"><input id="cycConfirm" type="checkbox" class="w-4 h-4 accent-red-500" /> I understand the current tasks and scores will be archived and cleared.</label>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="exportFullMatrixCSV()" class="text-xs font-mono font-bold px-3 py-2 rounded-xl border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-canvas-bg transition">⬇ Download current cycle first (Excel)</button>
+              <button id="cycCloseBtn" onclick="closeCurrentCycle()" class="text-xs font-extrabold px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white transition">Close cycle &amp; archive</button>
+            </div>
+            <div id="cycStatus" class="text-[11px] font-mono text-slate-400"></div>
+          </div>
+
+          <div class="bg-canvas-bg border border-canvas-border rounded-2xl p-5 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="text-xs font-mono font-bold uppercase text-canvas-blue">🗄 Archive</div>
+              <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none"><input id="cumIncludeCurrent" type="checkbox" class="w-3.5 h-3.5 accent-canvas-gold" /> include the current cycle</label>
+              <button onclick="showCumulative()" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-canvas-blue/20 text-canvas-blue border border-canvas-blue/40 hover:bg-canvas-blue hover:text-canvas-bg transition">📊 Cumulative (all months)</button>
+            </div>
+            <div id="archiveList" class="space-y-2"></div>
+            <div id="archiveViewBox" class="hidden"></div>
+          </div>
+        </div>
+
         <div id="bpanel-security" class="hidden space-y-5">
           
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -1274,6 +1325,12 @@
     const initialPillarScores = {};
 
     // Runtime State
+    let cycle = { no: 1, name: "", startISO: "" };
+    let cycleNo = 1;
+    let archivesIndex = [];
+    let archiveCache = {};
+    let seedDefaultTasks = true; // demo tasks only when nothing is stored yet
+    let exportTag = "";
     let tasks = [];
     let pillarSubColumns = {};
     let members = [];
@@ -1352,7 +1409,7 @@
     }
 
     function applyDefaultsAfterLoad() {
-      if (!tasks.length) tasks = JSON.parse(JSON.stringify(initialTasks));
+      if (!tasks.length && seedDefaultTasks) tasks = JSON.parse(JSON.stringify(initialTasks));
       members.forEach((m, idx) => { if (!m.id) m.id = `MEM-${String(idx + 1).padStart(2, "0")}`; });
       tasks.forEach((t) => { t.maxScore = TASK_MAX_TOTAL; });
       FIXED_PILLARS.forEach((p) => {
@@ -1372,6 +1429,7 @@
           const r = await api({ action: "load" });
           if (!r.ok) throw new Error(r.error);
           const st = r.state;
+          seedDefaultTasks = !st.configured;
           tasks = st.tasks || [];
           members = st.members || [];
           submissions = st.submissions || [];
@@ -1445,6 +1503,7 @@
         const r = await api({
           action: "boardSave",
           password: boardPasswordSession,
+          cycleNo,
           state: { tasks, pillarSubColumns, members, submissions, pillarScores, sessions, memories }
         });
         if (!r.ok) throw new Error(r.error);
@@ -1452,6 +1511,13 @@
         if (Array.isArray(r.submissions) && !syncDirty) submissions = r.submissions;
         setSyncStatus("ok", "☁ Saved " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       } catch (e) {
+        if (e && e.message === "stale_cycle") {
+          syncDirty = false;
+          setSyncStatus("err", "⚠ Cycle changed — reloading");
+          showToast("The cycle was closed from another device — reloading the latest data", "!");
+          setTimeout(() => refreshFromServer(true), 0);
+          return;
+        }
         syncDirty = true;
         setSyncStatus("err", "⚠ Save failed — retrying");
         syncTimer = setTimeout(flushToServer, 4000);
@@ -1466,7 +1532,9 @@
       const r = await api({ action: "boardLoad", password: boardPasswordSession });
       if (!r.ok) { showToast("Refresh failed", "✕"); return; }
       const st = r.state;
-      tasks = st.tasks?.length ? st.tasks : tasks;
+      seedDefaultTasks = !st.configured;
+      tasks = st.tasks || [];
+      cycle = st.cycle || cycle; cycleNo = cycle.no || 1; archivesIndex = st.archivesIndex || [];
       members = st.members || [];
       submissions = st.submissions || [];
           sessions = st.sessions || [];
@@ -2121,7 +2189,14 @@
 
     function updateSubmitSceneUI() {
       const task = getActiveSubmitTask();
-      if (!task) return;
+      const noTasks = !task;
+      ["submitFormCard", "deadlineLockedBanner"].forEach((id) => { if (noTasks) document.getElementById(id)?.classList.add("hidden"); });
+      document.getElementById("noTasksNotice")?.classList.toggle("hidden", !noTasks);
+      if (noTasks) {
+        const t = document.getElementById("submitBannerTitle"); if (t) t.textContent = "No tasks yet";
+        const b = document.getElementById("submitBannerBrief"); if (b) b.textContent = "The Board has not published tasks for the current cycle yet.";
+        return;
+      }
 
       const titleEl = document.getElementById("submitBannerTitle");
       const briefEl = document.getElementById("submitBannerBrief");
@@ -2411,13 +2486,15 @@
           }
           boardPasswordSession = pw;
           const st = r.state;
-          tasks = st.tasks?.length ? st.tasks : tasks;
+          seedDefaultTasks = !st.configured;
+          tasks = st.tasks || [];
           members = st.members || [];
           submissions = st.submissions || [];
           sessions = st.sessions || [];
           memories = st.memories || [];
           pillarScores = st.pillarScores || {};
           pillarSubColumns = st.pillarSubColumns || {};
+          cycle = st.cycle || cycle; cycleNo = cycle.no || 1; archivesIndex = st.archivesIndex || []; archiveCache = {};
           applyDefaultsAfterLoad();
           boardUnlocked = true;
           if (!st.configured) { syncDirty = true; flushToServer(); } // أول مرة: نكتب الإعدادات الافتراضية في الشيت
@@ -2449,8 +2526,203 @@
       showToast("Board Portal Locked", "🔒");
     }
 
+
+    // -----------------------------------------------------------------
+    // CYCLES & ARCHIVE
+    // -----------------------------------------------------------------
+    function withSnapshot(snap, fn) {
+      const bak = { tasks, members, submissions, pillarScores, pillarSubColumns };
+      tasks = snap.tasks || []; members = snap.members || []; submissions = snap.submissions || [];
+      pillarScores = snap.pillarScores || {}; pillarSubColumns = snap.pillarSubColumns || {};
+      try { return fn(); }
+      finally { ({ tasks, members, submissions, pillarScores, pillarSubColumns } = bak); }
+    }
+
+    function todayISO() { return new Date().toLocaleDateString("en-CA"); }
+
+    function renderCyclesPanel() {
+      const sum = document.getElementById("cycleSummary");
+      if (!sum) return;
+      if (!API_URL) {
+        sum.innerHTML = `<span class="text-amber-300">Connect the Google Sheet backend to use cycles and the archive.</span>`;
+        return;
+      }
+      const graded = submissions.filter((s) => s.score !== null && s.score !== undefined && s.score !== "").length;
+      sum.innerHTML = `<strong class="text-white">${escSession(cycle.name || "Current cycle")}</strong> · cycle #${cycleNo}${cycle.startISO ? " · started " + escSession(cycle.startISO) : ""} · ${tasks.length} task(s) · ${submissions.filter((s) => s.driveLink).length} submission(s) · ${graded} graded`;
+      const setIf = (id, v) => { const el = document.getElementById(id); if (el && !el.value) el.value = v; };
+      const nm = document.getElementById("cycNameInput"); if (nm && document.activeElement !== nm) nm.value = cycle.name || "";
+      const st = document.getElementById("cycStartInput"); if (st && document.activeElement !== st) st.value = cycle.startISO || "";
+      setIf("cycEndInput", todayISO()); setIf("cycNextStartInput", todayISO());
+
+      const list = document.getElementById("archiveList");
+      if (!archivesIndex.length) {
+        list.innerHTML = `<div class="text-xs text-slate-400">No archived cycles yet. When you close a cycle it appears here.</div>`;
+      } else {
+        list.innerHTML = archivesIndex.slice().reverse().map((a) => `
+          <div class="bg-canvas-panel border border-canvas-border rounded-xl px-3.5 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-sm font-bold text-white truncate">${escSession(a.name)}</div>
+              <div class="text-[11px] font-mono text-slate-400">${escSession(a.startISO || "?")} → ${escSession(a.endISO)} · ${a.tasks} task(s) · ${a.members} member(s)</div>
+            </div>
+            <div class="flex gap-1.5">
+              <button data-id="${escSession(a.id)}" onclick="viewArchive(this.dataset.id)" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-canvas-gold text-canvas-bg hover:bg-amber-400 transition">View</button>
+              <button data-id="${escSession(a.id)}" onclick="exportArchive(this.dataset.id)" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-canvas-bg transition">⬇ Excel</button>
+            </div>
+          </div>`).join("");
+      }
+    }
+
+    async function saveCycleInfo() {
+      const name = document.getElementById("cycNameInput").value.trim();
+      const startISO = document.getElementById("cycStartInput").value;
+      if (!name) { showToast("Cycle name is required", "!"); return; }
+      if (!API_URL || !boardPasswordSession) { showToast("Connect the backend and unlock first", "!"); return; }
+      if (syncDirty || syncInFlight) await flushToServer();
+      const r = await api({ action: "setCycle", password: boardPasswordSession, name, startISO });
+      if (!r.ok) { showToast("Could not save: " + r.error, "✕"); return; }
+      cycle = r.cycle; renderCyclesPanel(); showToast("Cycle saved", "✓");
+    }
+
+    async function closeCurrentCycle() {
+      const status = document.getElementById("cycStatus");
+      const endISO = document.getElementById("cycEndInput").value;
+      const nextName = document.getElementById("cycNextNameInput").value.trim();
+      const nextStartISO = document.getElementById("cycNextStartInput").value;
+      if (!API_URL || !boardPasswordSession) { showToast("Connect the backend and unlock first", "!"); return; }
+      if (!endISO || !nextStartISO) { showToast("Pick the end date and the next start date", "!"); return; }
+      if (!nextName) { showToast("Give the next cycle a name", "!"); return; }
+      if (!document.getElementById("cycConfirm").checked) { showToast("Tick the confirmation box first", "!"); return; }
+      if (!confirm(`Archive "${cycle.name || "Current cycle"}" and start "${nextName}"?\nTasks, submissions and scores will be cleared.`)) return;
+      const btn = document.getElementById("cycCloseBtn"); btn.disabled = true;
+      status.textContent = "⏳ Archiving…";
+      try {
+        if (syncDirty || syncInFlight) await flushToServer();
+        const r = await api({ action: "closeCycle", password: boardPasswordSession, cycleNo, endISO, nextName, nextStartISO });
+        if (!r.ok) {
+          const m = { stale_cycle: "The data changed from another device — reload and try again.", bad_date: "Check the dates.", name_required: "Next cycle name is required.", archive_verify_failed: "Archive could not be verified — nothing was cleared." }[r.error] || r.error;
+          status.innerHTML = `<span class="text-red-400">✕ ${escSession(m)}</span>`;
+          return;
+        }
+        archiveCache = {};
+        await refreshFromServer(true);
+        document.getElementById("cycConfirm").checked = false;
+        document.getElementById("cycNextNameInput").value = "";
+        document.getElementById("cycEndInput").value = "";
+        status.innerHTML = `<span class="text-emerald-400">✓ Archived. "${escSession(cycle.name)}" is now the current cycle.</span>`;
+        showToast("Cycle archived", "📚");
+      } catch (e) {
+        status.innerHTML = `<span class="text-red-400">✕ ${escSession("Could not reach the server — nothing was cleared. Try again.")}</span>`;
+      } finally { btn.disabled = false; }
+    }
+
+    async function getArchive(id) {
+      if (archiveCache[id]) return archiveCache[id];
+      const r = await api({ action: "archiveGet", password: boardPasswordSession, id });
+      if (!r.ok) throw new Error(r.error);
+      archiveCache[id] = r.archive;
+      return r.archive;
+    }
+
+    function rankedStats(snap) {
+      return withSnapshot(snap, () => calculateAllMemberStats())
+        .slice().sort((a, b) => b.videoShare45 - a.videoShare45 || a.name.localeCompare(b.name));
+    }
+
+    async function viewArchive(id) {
+      const box = document.getElementById("archiveViewBox");
+      box.classList.remove("hidden");
+      box.innerHTML = `<div class="text-xs text-slate-400 p-3">⏳ Loading…</div>`;
+      try {
+        const snap = await getArchive(id);
+        const stats = rankedStats(snap);
+        const tp = (st) => st.pillarTotals[FIXED_PILLARS.find((p) => p.isTasksPillar).id];
+        box.innerHTML = `
+          <div class="bg-canvas-panel border border-canvas-gold/40 rounded-2xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div><div class="text-sm font-extrabold text-white">${escSession(snap.name)}</div>
+              <div class="text-[11px] font-mono text-slate-400">${escSession(snap.startISO || "?")} → ${escSession(snap.endISO)} · closed ${escSession(snap.closedAt)}</div></div>
+              <div class="flex gap-1.5">
+                <button data-id="${escSession(id)}" onclick="exportArchive(this.dataset.id)" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-canvas-bg transition">⬇ Excel</button>
+                <button onclick="document.getElementById('archiveViewBox').classList.add('hidden')" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-canvas-border text-slate-300 hover:text-white transition">Close</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto"><table class="w-full text-xs">
+              <thead><tr class="text-left text-[10px] font-mono uppercase text-slate-400"><th class="py-1.5 pr-3">#</th><th class="pr-3">Member</th><th class="pr-3">Tasks</th><th class="pr-3">Total (100%)</th><th>Official share (45%)</th></tr></thead>
+              <tbody>${stats.map((s, i) => `<tr class="border-t border-canvas-border"><td class="py-1.5 pr-3 font-mono text-canvas-gold">${i + 1}</td><td class="pr-3 font-bold text-white">${escSession(s.name)}</td><td class="pr-3 font-mono">${tp(s).rawSum}/${tp(s).maxSum}</td><td class="pr-3 font-mono">${s.weightedTotalPct100}%</td><td class="font-mono">${s.videoShare45}%</td></tr>`).join("")}</tbody>
+            </table></div>
+          </div>`;
+        box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (e) {
+        box.innerHTML = `<div class="text-xs text-red-400 p-3">✕ Could not load this archive (${escSession(e.message)}).</div>`;
+      }
+    }
+
+    async function exportArchive(id) {
+      try {
+        const snap = await getArchive(id);
+        exportTag = "_" + String(snap.name).replace(/[^\w\u0600-\u06FF-]+/g, "_");
+        try { withSnapshot(snap, () => exportFullMatrixCSV()); } finally { exportTag = ""; }
+      } catch (e) { showToast("Could not load the archive: " + e.message, "✕"); }
+    }
+
+    async function showCumulative() {
+      const box = document.getElementById("archiveViewBox");
+      box.classList.remove("hidden");
+      if (!archivesIndex.length && !document.getElementById("cumIncludeCurrent").checked) {
+        box.innerHTML = `<div class="text-xs text-slate-400 p-3">No archived cycles yet.</div>`; return;
+      }
+      box.innerHTML = `<div class="text-xs text-slate-400 p-3">⏳ Loading all cycles…</div>`;
+      try {
+        const cols = [];
+        for (const a of archivesIndex) cols.push({ title: a.name, snap: await getArchive(a.id) });
+        if (document.getElementById("cumIncludeCurrent").checked) {
+          cols.push({ title: (cycle.name || "Current") + " (current)", snap: { tasks, members, submissions, pillarScores, pillarSubColumns } });
+        }
+        const people = {};
+        cols.forEach((c, ci) => {
+          rankedStats(c.snap).forEach((s) => {
+            const m = c.snap.members.find((x) => x.code === s.code) || {};
+            const key = m.id || s.name;
+            (people[key] = people[key] || { name: s.name, pct: [], share: [] });
+            people[key].name = s.name; people[key].pct[ci] = s.weightedTotalPct100; people[key].share[ci] = s.videoShare45;
+          });
+        });
+        const rows = Object.values(people).map((p) => {
+          const got = p.pct.filter((v) => v !== undefined);
+          const avg = got.length ? got.reduce((a, b) => a + b, 0) / got.length : 0;
+          const sum45 = p.share.filter((v) => v !== undefined).reduce((a, b) => a + b, 0);
+          return { ...p, avg: Number(avg.toFixed(2)), sum45: Number(sum45.toFixed(2)), n: got.length };
+        }).sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
+        window.__cum = { cols, rows };
+        box.innerHTML = `
+          <div class="bg-canvas-panel border border-canvas-blue/40 rounded-2xl p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="text-sm font-extrabold text-white">📊 Cumulative — ${cols.length} cycle(s)</div>
+              <div class="flex gap-1.5">
+                <button onclick="exportCumulative()" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-canvas-bg transition">⬇ Excel</button>
+                <button onclick="document.getElementById('archiveViewBox').classList.add('hidden')" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-canvas-border text-slate-300 hover:text-white transition">Close</button>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-400">Each cycle column = member's total % (out of 100). Average counts only the cycles the member took part in.</div>
+            <div class="overflow-x-auto"><table class="w-full text-xs">
+              <thead><tr class="text-left text-[10px] font-mono uppercase text-slate-400"><th class="py-1.5 pr-3">#</th><th class="pr-3">Member</th>${cols.map((c) => `<th class="pr-3">${escSession(c.title)}</th>`).join("")}<th class="pr-3">Average %</th><th>Sum of 45% shares</th></tr></thead>
+              <tbody>${rows.map((r, i) => `<tr class="border-t border-canvas-border"><td class="py-1.5 pr-3 font-mono text-canvas-gold">${i + 1}</td><td class="pr-3 font-bold text-white">${escSession(r.name)}</td>${cols.map((c, ci) => `<td class="pr-3 font-mono">${r.pct[ci] === undefined ? "—" : r.pct[ci] + "%"}</td>`).join("")}<td class="pr-3 font-mono text-canvas-gold">${r.avg}%</td><td class="font-mono">${r.sum45}</td></tr>`).join("")}</tbody>
+            </table></div>
+          </div>`;
+      } catch (e) {
+        box.innerHTML = `<div class="text-xs text-red-400 p-3">✕ Could not load the archive (${escSession(e.message)}).</div>`;
+      }
+    }
+
+    function exportCumulative() {
+      const c = window.__cum; if (!c) return;
+      const headers = ["Rank", "Member", ...c.cols.map((x) => x.title + " – Total (100%)"), "Average Total (100%)", "Sum of Official Shares (45%)", "Cycles Joined"];
+      const rows = c.rows.map((r, i) => [i + 1, r.name, ...c.cols.map((_, ci) => (r.pct[ci] === undefined ? "" : r.pct[ci])), r.avg, r.sum45, r.n]);
+      downloadCSVFile("Enactus_Video_Cumulative_All_Cycles.csv", headers, rows);
+    }
+
     function switchBoardTab(tabKey) {
-      const tabs = ["grading", "matrix", "rankings", "tasks", "roster", "security"];
+      const tabs = ["grading", "matrix", "rankings", "tasks", "roster", "security", "cycles"];
       tabs.forEach((k) => {
         const panel = document.getElementById(`bpanel-${k}`);
         const btn = document.getElementById(`btab-${k}`);
@@ -2473,6 +2745,7 @@
       renderBoardRankingsDashboard();
       renderUnlimitedTasksManager();
       renderRosterTable();
+      renderCyclesPanel();
     }
 
     async function updateBoardPassword() {
@@ -3904,6 +4177,7 @@
     // 12. EXCEL / CSV EXPORTERS (SEPARATE & ALL-IN-ONE MASTER EXPORTS)
     // -----------------------------------------------------------------
     function downloadCSVFile(filename, headers, rows) {
+      if (exportTag) filename = filename.replace(/(\.\w+)$/, exportTag + "$1");
       const escapeCell = (val) => {
         const str = val === null || val === undefined ? "" : String(val);
         return `"${str.replace(/"/g, '""')}"`;
