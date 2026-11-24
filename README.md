@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en" dir="ltr" class="dark">
 <head>
   <meta charset="UTF-8" />
@@ -1355,7 +1354,7 @@
     // ===== BACKEND CONFIG =====
     // الصق هنا رابط الـ Web App بتاع Google Apps Script (بينتهي بـ /exec).
     // لو سبته فاضي، الموقع بيشتغل محلياً على المتصفح بس (localStorage) للتجربة.
-    const BAKED_API_URL = "https://script.google.com/macros/s/AKfycbyr7V52RIUAnHuOuK-Z5cqqEZjDWkS6_Nau33OTVgc8ja80xIKWjNWxgJVnW6ohdJ1Q/exec"; // اختياري: لو لصقت الرابط هنا مش هتحتاج ?api= ولا الإعداد من الصفحة
+    const BAKED_API_URL = "https://script.google.com/macros/s/AKfycbyCm5G8DDV0k9IUEXrrVS5azzXSpRo_508iZaGk7_meAWl-Bm2hwj-gvM59RSyRIOYX/exec"; // اختياري: لو لصقت الرابط هنا مش هتحتاج ?api= ولا الإعداد من الصفحة
     let API_URL = BAKED_API_URL;
     try {
       const q = new URLSearchParams(location.search).get("api");
