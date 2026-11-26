@@ -1335,6 +1335,7 @@
     let members = [];
     let submissions = [];
     let sessions = [];            // مواعيد السيشنز: {id,title,dateISO,driveLink,note}
+    let sessionFeedbacks = [];    // فيدباك السيشنز المجهول — بيتحمل للبورد بس
     let editingSessionId = null;
     let memories = [];            // ألبومات الذكريات: {id,title,dateISO,driveLink,coverLink,note}
     let editingMemoryId = null;
@@ -1354,7 +1355,7 @@
     // ===== BACKEND CONFIG =====
     // الصق هنا رابط الـ Web App بتاع Google Apps Script (بينتهي بـ /exec).
     // لو سبته فاضي، الموقع بيشتغل محلياً على المتصفح بس (localStorage) للتجربة.
-    const BAKED_API_URL = "https://script.google.com/macros/s/AKfycbyCm5G8DDV0k9IUEXrrVS5azzXSpRo_508iZaGk7_meAWl-Bm2hwj-gvM59RSyRIOYX/exec"; // اختياري: لو لصقت الرابط هنا مش هتحتاج ?api= ولا الإعداد من الصفحة
+    const BAKED_API_URL = "https://script.google.com/macros/s/AKfycbyaTUB8RGVVCGkJvNgOKN63Mi0smvtQ8IRiH6F6aFcV5LHsJF6gghY7erYvmZiapB9A/exec"; // اختياري: لو لصقت الرابط هنا مش هتحتاج ?api= ولا الإعداد من الصفحة
     let API_URL = BAKED_API_URL;
     try {
       const q = new URLSearchParams(location.search).get("api");
@@ -1537,6 +1538,7 @@
       members = st.members || [];
       submissions = st.submissions || [];
           sessions = st.sessions || [];
+          sessionFeedbacks = st.feedbacks || [];
           memories = st.memories || [];
       pillarScores = st.pillarScores || {};
       if (st.pillarSubColumns && Object.keys(st.pillarSubColumns).length) pillarSubColumns = st.pillarSubColumns;
@@ -1632,6 +1634,27 @@
                  <button onclick="deleteSession('${escSession(x.id)}')" class="text-red-400 hover:bg-red-500/10 font-mono text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">✕ Delete</button>
                </div>`
             : "";
+          const fbs = boardUnlocked ? sessionFeedbacks.filter((f) => f.sessionId === x.id) : [];
+          const feedbackBlock = `
+            <div class="w-full md:basis-full border-t border-canvas-border pt-3 space-y-2">
+              <div class="text-[11px] font-mono text-slate-400">💬 Anonymous feedback — your name is NOT recorded. Only the Board can read it.</div>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <textarea id="fb-input-${escSession(x.id)}" rows="2" maxlength="1000" placeholder="Write your feedback about this session..." class="flex-1 bg-canvas-panel border border-canvas-border focus:border-canvas-gold rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea>
+                <button onclick="sendSessionFeedback('${escSession(x.id)}')" class="bg-canvas-gold hover:bg-amber-400 text-canvas-bg font-extrabold text-xs px-4 py-2 rounded-xl transition shrink-0">Send</button>
+              </div>
+              ${boardUnlocked ? `
+                <div class="bg-canvas-panel border border-canvas-gold/30 rounded-xl p-3 space-y-2">
+                  <div class="text-[10px] font-mono font-bold uppercase text-canvas-gold">Board only — ${fbs.length} feedback</div>
+                  ${fbs.length ? fbs.slice().reverse().map((f) => `
+                    <div class="flex items-start justify-between gap-2 bg-canvas-bg border border-canvas-border rounded-lg px-3 py-2">
+                      <div class="min-w-0">
+                        <div class="text-xs text-slate-200 whitespace-pre-line break-words">${escSession(f.text)}</div>
+                        <div class="text-[10px] font-mono text-slate-500 mt-0.5">${escSession(f.date)}</div>
+                      </div>
+                      <button onclick="deleteSessionFeedback('${escSession(f.id)}')" class="text-red-400 hover:bg-red-500/10 font-mono text-[11px] px-2 py-1 rounded-lg shrink-0">✕</button>
+                    </div>`).join("") : `<div class="text-[11px] font-mono text-slate-500">No feedback yet.</div>`}
+                </div>` : ""}
+            </div>`;
           return `
             <div class="bg-canvas-bg border ${state === "today" ? "border-emerald-500/50" : "border-canvas-border"} rounded-xl p-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-5">
               <div class="shrink-0 md:w-48">
@@ -1646,6 +1669,7 @@
               </div>
               <div class="flex flex-wrap items-center gap-2 md:justify-end">${link}${pdfBtn}${admin}</div>
               <div id="pdf-view-${escSession(x.id)}" class="hidden w-full md:basis-full"></div>
+              ${feedbackBlock}
             </div>`;
         })
         .join("");
@@ -1762,6 +1786,37 @@
       saveState();
       renderSessions();
       showToast("Session deleted", "🗑");
+    }
+
+    async function sendSessionFeedback(sessionId) {
+      const el = document.getElementById("fb-input-" + sessionId);
+      const text = (el?.value || "").trim();
+      if (!text) { showToast("Write your feedback first", "!"); return; }
+      if (!API_URL) { showToast("Feedback needs the Google Sheet backend", "!"); return; }
+      try {
+        const r = await api({ action: "sessionFeedback", sessionId, text });
+        if (!r.ok) {
+          const m = { too_many: "Too many messages right now — try later", session_not_found: "This session no longer exists", empty: "Write your feedback first", unknown_action: "Backend is the OLD version — deploy the new Code.gs" };
+          showToast(m[r.error] || "Failed: " + r.error, "✕");
+          return;
+        }
+        el.value = "";
+        showToast("Thank you — your feedback was sent anonymously", "💬");
+      } catch (e) {
+        showToast("Network error — feedback NOT sent", "✕");
+      }
+    }
+
+    async function deleteSessionFeedback(id) {
+      if (!boardUnlocked || !boardPasswordSession) return;
+      if (!confirm("Delete this feedback?")) return;
+      try {
+        const r = await api({ action: "deleteFeedback", password: boardPasswordSession, id });
+        if (!r.ok) { showToast("Failed: " + r.error, "✕"); return; }
+        sessionFeedbacks = sessionFeedbacks.filter((f) => f.id !== id);
+        renderSessions();
+        showToast("Feedback deleted", "🗑");
+      } catch (e) { showToast("Network error", "✕"); }
     }
 
     // ===== TEAM MEMORIES (read by everyone, written only by the Board after the password) =====
@@ -2490,6 +2545,7 @@
           members = st.members || [];
           submissions = st.submissions || [];
           sessions = st.sessions || [];
+          sessionFeedbacks = st.feedbacks || [];
           memories = st.memories || [];
           pillarScores = st.pillarScores || {};
           pillarSubColumns = st.pillarSubColumns || {};
@@ -2516,6 +2572,7 @@
     function lockBoardPortal() {
       boardUnlocked = false;
       boardPasswordSession = "";
+      sessionFeedbacks = [];
       resetSessionForm();
       resetMemoryForm();
       renderSessions();
