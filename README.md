@@ -1460,6 +1460,7 @@
         setSyncStatus("off", "💾 Local mode");
       }
       applyDefaultsAfterLoad();
+      pickDefaultOpenTask();
       document.getElementById("setupBanner")?.classList.toggle("hidden", !!API_URL);
       const lbl = document.getElementById("currentApiLabel");
       if (lbl) lbl.textContent = API_URL ? API_URL.slice(0, 48) + "…" : "not connected";
@@ -1467,6 +1468,11 @@
       refreshAllSelectorsAndViews();
       tickDeadlineClock();
       setInterval(tickDeadlineClock, 1000);
+    }
+
+    // الديفولت عند فتح الموقع: آخر تاسك في القايمة (مفتوح أو مقفول). العضو يقدر يختار أي تاسك تاني من القايمة.
+    function pickDefaultOpenTask() {
+      if (tasks.length) activeSubmitTaskId = tasks[tasks.length - 1].id;
     }
 
     function resetToDefaults() {
